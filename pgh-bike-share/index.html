@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- jruby -run -e httpd . -p 9090 -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+
+<style>
+
+ body {
+      padding: 0;
+      margin: 0;
+  }
+  html, body, #map {
+      height: 100%;
+      width: 100%;
+  }
+
+  #station-tooltip {
+    background-color: white;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+    padding: 3px;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    visibility: hidden;
+  }
+
+  #title {
+    color: black;
+    position: absolute;
+    top: 20px;
+    left: 60px;
+    font-size: 26px;
+  }
+
+  #date {
+    color: black;
+    position: absolute;
+    font-size: 16px;
+    top: 60px;
+    left: 60px;
+  }
+
+  #time {
+    color: red;
+    position: absolute;
+    font-size: 22px;
+    top: 85px;
+    left: 60px;
+  }
+
+  .station {
+    opacity: 1;
+    fill: rgb(252, 78, 42);
+    stroke:white;
+    stroke-width: 0.5;
+  }
+
+  .rental {
+    stroke-linejoin: round;
+    /*stroke: url(#rental-gradient);*/
+    stroke: rgb(0,171,224);
+    stroke-width: 0.9;
+    fill: none;
+  }
+
+</style>
+
+<body>
+  <script type="text/javascript" src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+  <link rel="stylesheet" href="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+  <script src="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+  
+    <div id="map"></div>
+    <div id="station-tooltip"></div>
+    <div id="title">Healthy Ride PGH</div>
+    <div id="date"></div>
+    <div id="time">00:00</div>
+
+
+    <script>
+      window.map = new L.Map("map", {center: [40.449690349293654, -79.96192932128906], zoom: 14}),
+          tileLayer = new L.TileLayer("http://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png");
+
+      tileLayer.setOpacity(0.3);
+      map.addLayer(tileLayer);
+
+      map._initPathRoot();
+
+      var svg = d3.select('#map').select('svg'),
+          rental_g = svg.append('g'),
+          station_g = svg.append('g');
+
+      var rental_gradient = svg.append('defs')
+        .append('linearGradient')
+          .attr('id','rental-gradient')
+          .attr('x1','0%')
+          .attr('y1','0%')
+          .attr('x2','100%')
+          .attr('y2','0%')
+
+      rental_gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', 'rgb(198, 219, 239)')
+
+      rental_gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', 'rgb(0,171,224)')
+
+      var lineGenerator = d3.svg.line()
+          .interpolate('cardinal')
+          .x(function(d) {
+              return applyLatLngToLayer(d).x
+          })
+          .y(function(d) {
+              return applyLatLngToLayer(d).y
+          });
+
+      function applyLatLngToLayer(d) {
+          return map.latLngToLayerPoint(new L.LatLng(d[0], d[1]))
+      }
+
+
+
+      var translateToLayer = function(d) { 
+        return 'translate(' + 
+          map.latLngToLayerPoint(d.LatLng).x + 
+          ',' + 
+          map.latLngToLayerPoint(d.LatLng).y +
+        ')';
+      }
+
+      var translateTooltip = function(tooltip,d) { 
+        return 'translate(' + 
+          (map.latLngToContainerPoint(d.LatLng).x + 15)+ 
+          'px,' + 
+          (map.latLngToContainerPoint(d.LatLng).y - 50) +
+        'px)';
+      }
+
+      var station_tooltip = d3.select('#station-tooltip'),
+          station_lookup = {};
+
+      var date_div = d3.select('#date'),
+          time_div = d3.select('#time');
+
+
+      queue()
+        .defer(d3.csv, 'HealthyRideStations2015.csv')
+        .defer(d3.csv,'HealthyRideRentals 2015 Q3.csv')
+        .await(function(error, stations, rentals) { 
+          if (error) throw error;
+
+          // Translate stations to the map
+          stations.forEach(function(d) {
+            d.LatLng = new L.LatLng(+d.Latitude,
+              +d.Longitude)
+            station_lookup[d.StationNum] = d.LatLng
+          })
+
+          console.log(station_lookup)
+
+          // var scale = d3.scale.sqrt()
+          //   .domain([0,20])
+          //   .range([1,20])
+ 
+          var day_night_scale = ['#ffff00','#ffff5f','#ffff82','#ffff9e','#ffffb4','#ffffc7','#ffffd8','#d4d1d9','#c7b5c3','#b39ab3','#9b81a8','#7c6ba0','#54569b','#004499']
+
+          // Append stations
+          var station_points = station_g.selectAll("circle")
+              .data(stations)
+            .enter().append('circle')
+            .attr('id',function(d){
+              return 'station-' + d.StationNum;
+            })
+            .attr("class", 'station')
+            .attr("r",3)
+            .on('mouseover',function(d){
+              var self = d3.select(this),
+                  html = d.StationName + '<br>' + d.RackQnty + '  bikes';
+
+              station_tooltip
+                .html(html)
+                .style({
+                  visibility: 'visible',
+                  transform: translateTooltip(station_tooltip, d)
+                })
+            })
+            .on('mouseout', function(d){
+              station_tooltip.style('visibility','hidden');
+            });
+
+
+          var generateRentalArc = function(rental){
+            var from =  station_lookup[rental.FromStationId],
+                to = station_lookup[rental.ToStationId];
+            if(!(to && from)) return;
+
+            var source = map.latLngToLayerPoint(from),
+                target =  map.latLngToLayerPoint(to),
+                dx = target.x - source.x,
+                dy = target.y - source.y,
+                dr = Math.sqrt(dx * dx + dy * dy);
+
+            return "M" + source.x + "," + source.y + "A" + dr + "," + dr +
+                  " 0 0,1 " + target.x + "," + target.y;
+          }
+
+          // window.rentals = rentals;
+          window.getRentalsForDate = function(date, format){
+            format = typeof variable === 'undefined' ? '%x' : format;
+            var date_format = d3.time.format(format);
+            return rentals.filter(function(r){
+              var d = new Date(Date.parse(r.StartTime));
+              return date_format(d) == date && r.FromStationId && r.ToStationId;
+            })
+          }
+
+
+
+          // Append rentals
+          var drawRentals = function(rental_data){
+            var r = rental_g.selectAll('path.rental')
+              .data(rental_data, function(d){
+                return d.TripId;
+              });
+
+            d3.selectAll('.station')
+              .attr("r", 3);
+
+            r.enter().append('path')
+              .attr("d", generateRentalArc)
+              .attr('class',function(d){
+                return 'rental s-' + d.FromStationId + ' s-' + d.ToStationId;
+              })
+              .attr("stroke-dasharray", function(){
+                var totalLength = d3.select(this).node().getTotalLength();
+                return totalLength + " " + totalLength;
+              })
+              .attr("stroke-dashoffset",  function(){
+                var totalLength = d3.select(this).node().getTotalLength();
+                return totalLength;
+              })
+              .transition()
+                .delay(function(d){
+                  var day_start = Date.parse(current_date),
+                      ride_start =  start = Date.parse(d.StartTime);
+                  return (ride_start - day_start) / (2 *2.88 * 1000);
+                })
+                .duration(function(d){
+                  var start = Date.parse(d.StartTime),
+                      stop = Date.parse(d.StopTime);
+                  return (stop - start) / (2 * 2.88 * 1000);
+                })
+                .ease("linear")
+                .attr("stroke-dashoffset", 0)
+                .each("end", function(d){
+                  console.log(d.StopTime);
+                  var from = d3.select('#station-' + d.FromStationId),
+                      to = d3.select('#station-' + d.ToStationId);
+                 
+                  if(!from.empty()){
+                    from.attr('r', 
+                      d3.max([2,parseInt(from.attr('r')) - 1]) 
+                    );
+                  }
+                  if(!to.empty()){
+                    to.attr('r', 
+                      parseInt(to.attr('r')) + 1 
+                    );
+                  }
+                  
+                
+                  d3.select(this)
+                    .transition()
+                      .style('opacity', 0)
+                      .duration(1000)
+                      .each("end", function(){
+                        d3.select(this).remove();
+                      });
+                });
+
+
+            date_div.html(window.current_date + ' ' + rental_data.length + ' rides' );
+          }
+
+          window.update = function() { 
+            station_points.attr('transform', translateToLayer);
+            drawRentals(getRentalsForDate(window.current_date));
+          }
+
+          window.current_date = '08/05/2015';
+
+          window.incrementDate = function(){
+            var time_format = d3.time.format('%x'),
+                d = new Date(Date.parse(current_date));
+            d.setDate(d.getDate() + 1);
+            return time_format(new Date(d));
+          }
+
+          window.tomorrow = function(){
+            window.current_date = incrementDate();
+            update();
+          }
+
+          // Define what to do when the view changes
+          map.on('viewreset', update);
+          // Call update to set everything up.
+          update();
+         
+          window.play_interval = setInterval(function(){
+            console.log(window.current_date);
+            tomorrow();
+            if(window.current_date == "09/30/2015")
+              clearInterval(window.play_interval);
+          }, 15000);
+
+          // window.clockInterval = setInterval(function(){
+          //     var t = time_div.text(),
+          //         h = parseInt(t.substr(0,t.indexOf(':')));
+          //     time_div.text((h + 1) % 24 + ':00');
+          //   },15000/24)
+        });
+
+    </script>
+
+  </div>
