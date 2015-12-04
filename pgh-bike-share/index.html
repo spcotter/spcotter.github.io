@@ -34,19 +34,11 @@
     font-size: 26px;
   }
 
-  #date {
-    color: black;
-    position: absolute;
-    font-size: 16px;
-    top: 60px;
-    left: 60px;
-  }
-
   #time {
     color: red;
     position: absolute;
     font-size: 22px;
-    top: 85px;
+    top: 60px;
     left: 60px;
   }
 
@@ -78,8 +70,7 @@
     <div id="map"></div>
     <div id="station-tooltip"></div>
     <div id="title">Healthy Ride PGH</div>
-    <div id="date"></div>
-    <div id="time">00:00</div>
+    <div id="time"></div>
 
 
     <script>
@@ -145,15 +136,16 @@
       var station_tooltip = d3.select('#station-tooltip'),
           station_lookup = {};
 
-      var date_div = d3.select('#date'),
-          time_div = d3.select('#time');
+      var time_div = d3.select('#time');
 
 
       queue()
         .defer(d3.csv, 'HealthyRideStations2015.csv')
-        .defer(d3.csv,'HealthyRideRentals 2015 Q3.csv')
+        .defer(d3.json,'rides.json')
         .await(function(error, stations, rentals) { 
           if (error) throw error;
+
+          window.rentals = rentals;
 
           // Translate stations to the map
           stations.forEach(function(d) {
@@ -162,7 +154,8 @@
             station_lookup[d.StationNum] = d.LatLng
           })
 
-          console.log(station_lookup)
+          console.log(station_lookup);
+          console.log(rentals)
 
           // var scale = d3.scale.sqrt()
           //   .domain([0,20])
@@ -196,8 +189,8 @@
 
 
           var generateRentalArc = function(rental){
-            var from =  station_lookup[rental.FromStationId],
-                to = station_lookup[rental.ToStationId];
+            var from =  station_lookup[rental.from_station_id],
+                to = station_lookup[rental.to_station_id];
             if(!(to && from)) return;
 
             var source = map.latLngToLayerPoint(from),
@@ -210,15 +203,19 @@
                   " 0 0,1 " + target.x + "," + target.y;
           }
 
+
+          var format = d3.time.format("%a %m/%d/%Y %H:%M"),
+              format_date_string = d3.time.format("%m/%d/%Y");
+
           // window.rentals = rentals;
-          window.getRentalsForDate = function(date, format){
-            format = typeof variable === 'undefined' ? '%x' : format;
-            var date_format = d3.time.format(format);
-            return rentals.filter(function(r){
-              var d = new Date(Date.parse(r.StartTime));
-              return date_format(d) == date && r.FromStationId && r.ToStationId;
-            })
-          }
+          // window.getRentalsForDate = function(date, format){
+          //   format = typeof variable === 'undefined' ? '%x' : format;
+          //   var date_format = d3.time.format(format);
+          //   return rentals.filter(function(r){
+          //     var d = new Date(Date.parse(r.StartTime));
+          //     return date_format(d) == date && r.from_station_id && r.to_station_id;
+          //   })
+          // }
 
 
 
@@ -226,16 +223,16 @@
           var drawRentals = function(rental_data){
             var r = rental_g.selectAll('path.rental')
               .data(rental_data, function(d){
-                return d.TripId;
+                return d.trip_id
               });
+              
 
-            d3.selectAll('.station')
-              .attr("r", 3);
+
 
             r.enter().append('path')
               .attr("d", generateRentalArc)
               .attr('class',function(d){
-                return 'rental s-' + d.FromStationId + ' s-' + d.ToStationId;
+                return 'rental s-' + d.from_station_id + ' s-' + d.to_station_id;
               })
               .attr("stroke-dasharray", function(){
                 var totalLength = d3.select(this).node().getTotalLength();
@@ -246,22 +243,18 @@
                 return totalLength;
               })
               .transition()
-                .delay(function(d){
-                  var day_start = Date.parse(current_date),
-                      ride_start =  start = Date.parse(d.StartTime);
-                  return (ride_start - day_start) / (2 *2.88 * 1000);
-                })
                 .duration(function(d){
-                  var start = Date.parse(d.StartTime),
-                      stop = Date.parse(d.StopTime);
-                  return (stop - start) / (2 * 2.88 * 1000);
+                  var start = Date.parse(d.start_time),
+                      stop = Date.parse(d.stop_time);
+                  console.log('Adding ' + d.start_time);
+                  return Math.round((stop - start) * time_ratio);
                 })
                 .ease("linear")
                 .attr("stroke-dashoffset", 0)
                 .each("end", function(d){
-                  console.log(d.StopTime);
-                  var from = d3.select('#station-' + d.FromStationId),
-                      to = d3.select('#station-' + d.ToStationId);
+                  console.log('Removing ' + d.start_time);
+                  var from = d3.select('#station-' + d.from_station_id),
+                      to = d3.select('#station-' + d.to_station_id);
                  
                   if(!from.empty()){
                     from.attr('r', 
@@ -285,45 +278,63 @@
                 });
 
 
-            date_div.html(window.current_date + ' ' + rental_data.length + ' rides' );
+            // date_div.html(window.current_date + ' ' + rental_data.length + ' rides' );
           }
 
           window.update = function() { 
             station_points.attr('transform', translateToLayer);
-            drawRentals(getRentalsForDate(window.current_date));
+            // drawRentals(getRentalsForDate(window.current_date));
           }
 
-          window.current_date = '08/05/2015';
+          window.current_epoch = Date.parse("07/26/2015 07:00:00") / 1000;
+          window.current_date = new Date(window.current_epoch * 1000);
+          window.current_date_string = format_date_string(window.current_date);
 
-          window.incrementDate = function(){
-            var time_format = d3.time.format('%x'),
-                d = new Date(Date.parse(current_date));
-            d.setDate(d.getDate() + 1);
-            return time_format(new Date(d));
-          }
 
-          window.tomorrow = function(){
-            window.current_date = incrementDate();
-            update();
-          }
+          // window.incrementDate = function(){
+          //   var time_format = d3.time.format('%x'),
+          //       d = new Date(Date.parse(current_date));
+          //   d.setDate(d.getDate() + 1);
+          //   return time_format(new Date(d));
+          // }
+
+          // window.tomorrow = function(){
+          //   window.current_date = incrementDate();
+          //   update();
+          // }
 
           // Define what to do when the view changes
           map.on('viewreset', update);
           // Call update to set everything up.
           update();
          
-          window.play_interval = setInterval(function(){
-            console.log(window.current_date);
-            tomorrow();
-            if(window.current_date == "09/30/2015")
-              clearInterval(window.play_interval);
-          }, 15000);
+          var ms_per_min = 11,
+              time_ratio = ms_per_min / 60000;
 
-          // window.clockInterval = setInterval(function(){
-          //     var t = time_div.text(),
-          //         h = parseInt(t.substr(0,t.indexOf(':')));
-          //     time_div.text((h + 1) % 24 + ':00');
-          //   },15000/24)
+          window.play_interval = setInterval(function(){
+            window.current_epoch += 60;
+            window.current_date = new Date(window.current_epoch * 1000);
+            var new_date_string = format_date_string(window.current_date);
+
+            if(new_date_string != current_date_string){
+              d3.selectAll('.station').attr("r", 3);
+              current_date_string = new_date_string;
+            }
+
+
+
+            time_div.html(format(window.current_date));
+
+            var r = rentals[window.current_epoch];
+            if(r)
+              drawRentals(r);
+
+            if (d3.time.format("%m/%d/%Y %H:%M")(window.current_date) == "09/30/2015 00:00"){
+              console.log('Reach the last date');
+              clearInterval(window.play_interval);
+            }
+          }, ms_per_min);
+
         });
 
     </script>
