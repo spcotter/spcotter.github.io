@@ -329,9 +329,9 @@
                   var r = parseInt(d3.select(this).attr('r'));
                   console.log(r)
                   if(r > 3)
-                    r -= 1;
+                    r -= Math.floor(Math.sqrt(r - 3));
                   else if(r < 3)
-                    r += 1;
+                    r +=  Math.floor(Math.sqrt(3 - r));
                   return r;
                 });
               current_hour = new_hour;
