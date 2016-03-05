@@ -75,9 +75,9 @@
 
     <script>
       window.map = new L.Map("map", {center: [40.449690349293654, -79.96192932128906], zoom: 14}),
-          tileLayer = new L.TileLayer("http://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png");
+      window.tileLayer = new L.TileLayer("http://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png");
 
-      tileLayer.setOpacity(0.3);
+      window.tileLayer.setOpacity(0.3);
       map.addLayer(tileLayer);
 
       map._initPathRoot();
