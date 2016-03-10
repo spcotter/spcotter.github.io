@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>All the Buses</title>
+<!-- jruby -run -e httpd . -p 9090 -->
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+  <script src="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script src="./L.CanvasOverlay.js"></script>
+  <script src="./L.D3SvgOverlay.min.js"></script>
+
+  <link rel="stylesheet" href="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+
+<style>
+
+  body {
+      padding: 0;
+      margin: 0;
+  }
+
+  html, body, #map {
+      height: 100%;
+      width: 100%;
+  }
+
+  #time {
+    position: absolute;
+    top: 4px;
+    left: 50px;
+  }
+
+  #current-time {
+    color: black;
+    font-size: 28px;
+  }
+
+  #active-trips {
+    color: #666;
+    font-size: 16px;
+  }
+
+  #blurb {
+    position: absolute;
+    width: 100%;
+    bottom: 0px;
+    left: 0px;
+    font-size: 16px;
+    background-color: white;
+    padding: 8px;
+    opacity: 0.6;
+  }
+
+  .routes {
+    opacity: 0.3;
+  }
+
+  .route {
+    fill: none;
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+</style>
+
+<body>
+
+
+  <div id="map"></div>
+  <div id="time">
+    <div id="current-time">3:38 AM</div>
+    <div id="active-trips">0 active trips</div>
+  </div>
+  <div id="blurb">
+    <a href="www.portauthority.org" target="_blank">Port Authority of Allegheny County</a> serves 207,238 riders on the average weekday, making over 6,500 trips.<br/><span style="font-size: 12px;">Weekday Service, January to March 2016</span>
+  </div>
+
+
+  <script>
+    window.requestAnimFrame = (function(){
+      return  window.requestAnimationFrame       ||
+              window.webkitRequestAnimationFrame ||
+              window.mozRequestAnimationFrame    ||
+              function( callback ){
+                window.setTimeout(callback, 1000 / 60);
+              };
+    })();
+
+
+    var map = new L.Map('map', {
+            center: [40.449690349293654, -79.96192932128906], 
+            zoom: 11
+          }),
+        tileLayer = new L.TileLayer('http://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png');
+
+    tileLayer.setOpacity(0.3);
+
+    map.addLayer(tileLayer);
+
+    map._initPathRoot();
+
+
+    queue()
+      .defer(d3.json, 'routes.json')
+      .defer(d3.json, 'canvas_positions1m.json')
+      .await(function(error, routes, data) { 
+        if (error) throw error;
+
+        var colors = {
+                0: "rgba(102,102,102,1)",
+                B: "rgba(70,130,180,1)",
+                Y: "rgba(254,196,79,1)",
+                P: "rgba(117,107,177,1)",
+                G: "rgba(44,162,95,1)",
+                O: "rgba(217,95,14,1)",
+                R: "rgba(240,59,32,1)",
+                D: "rgba(0,0,0,1)",
+                M: "rgba(0,0,0,1)"
+              };
+
+
+        var svg = L.d3SvgOverlay(function(selection, projection){
+
+          var routes_g = selection.selectAll('.routes');
+          if(routes_g.empty()){
+            routes_g = selection.append('g')
+              .attr('class','routes')
+
+            var route_paths = routes_g.selectAll('path')
+              .data(routes.features);
+
+            route_paths.enter().append('path')
+              .attr('class', 'route')
+              .attr('d', d3.geo.path()
+                  .projection(function(l){
+                    var p = projection.latLngToLayerPoint({ lon: l[0], lat:  l[1] });
+                    return [p.x,p.y];
+                  })
+                )
+              .attr('stroke', function(d){
+                 
+                  return colors[d.properties.route_id.substr(0,1)];
+                });
+          }
+
+        });
+
+        svg.addTo(map);
+
+       
+        var times = Object.keys(data.positions),
+            active_trips = 0,
+            active_trips_div = d3.select('#active-trips'),
+            current_time = data.start_time,
+            current_time_div = d3.select('#current-time');
+
+        var current_index = 37,
+            frame = 0,
+            frame_count = 17;
+
+        var interpolate = function(p1, p2, f){
+                var nx = p1[0] + ( p2[0] - p1[0] ) * f,
+                    ny = p1[1] + ( p2[1] - p1[1] ) * f;
+                return [nx, ny];
+              },
+            zero_pad = function (num, places) {
+                var zero = places - num.toString().length + 1;
+                return Array(+(zero > 0 && zero)).join('0') + num;
+              },
+            m_to_h = function (c) {
+                var h = Math.floor(c / 60) % 24,
+                    m = c % 60,
+                    s = h < 12 ? ' AM' : ' PM',
+                    h = h % 12 == 0 ? 12 : h % 12;
+                return h + ':' + zero_pad(m, 2) + s;
+              };
+
+
+        window.running = true;
+        window.timeout = 10;
+
+
+        window.draw = function(){
+          var context = params.canvas.getContext('2d');
+
+          context.clearRect(0, 0, params.canvas.width, params.canvas.height);
+
+          var trips_t1 = data.positions[ times[current_index] ],
+              trips_t2 = data.positions[ times[current_index + 1] ],
+              f = frame / frame_count,
+              trip_keys = Object.keys(trips_t1);
+
+          active_trips = trip_keys.length;
+
+          trip_keys.forEach(function(t){
+            // Lat and long are switched in this map? 
+            if(trips_t2[t]){
+              var d = interpolate( trips_t1[t], trips_t2[t], f),
+                  dot = canvasOverlay._map.latLngToContainerPoint(d);
+
+              context.fillStyle = colors[ t.split('.')[1] ];
+              context.beginPath();
+              context.arc(dot.x, dot.y, 2.5, 0, Math.PI * 2);
+              context.fill();
+              context.lineWidth = 0.5;
+              context.strokeStyle = '#FFFFFF';
+              context.stroke();
+              context.closePath();
+            }
+           
+          });
+
+
+          frame = (frame + 1) % frame_count;
+
+          if(frame == 0){
+            current_index += 1;
+            active_trips_div.text( active_trips + ' active trips' );
+            current_time_div.text( m_to_h( data.start_time + current_index ) );
+          }
+
+          if(running && current_index < (times.length - 1)){
+            setTimeout(function(){
+              requestAnimationFrame(draw);
+            }, timeout);
+          }
+        };
+
+
+        var drawingOnCanvas = function(canvasOverlay, params) {
+          window.canvasOverlay = canvasOverlay;
+          window.params = params;
+          draw();
+        };
+
+
+
+        L.canvasOverlay()
+          .drawing(drawingOnCanvas)
+          .addTo(map);
+
+      });
+  </script>
