@@ -1,3 +1,8 @@
+All the Buses
+=============
+## Pittsburgh Transit Data Visualization
+
+SQL for the GTFS data:
 
 ```sql
 
@@ -110,8 +115,9 @@ CREATE TABLE gtfs_trips (
 );
 ```
 
-Replace times outside of the actual timeperiod.
+Replace times outside of the actual timeperiod in bash.
 
+Bash
 ```ruby
 ruby -pi.bak -e "gsub(/24:(\d{2}):(\d{2})/, '00:\1:\2')" stop_times.txt
 ruby -pi.bak -e "gsub(/25:(\d{2}):(\d{2})/, '01:\1:\2')" stop_times.txt
@@ -120,6 +126,7 @@ ruby -pi.bak -e "gsub(/26:(\d{2}):(\d{2})/, '02:\1:\2')" stop_times.txt
 
 Load the data into PostgreSQL.
 
+Bash
 ```bash
 cd /Users/Shared/general_transit_bing
 psql -c "COPY gtfs_agency FROM '/Users/Shared/agency.txt' WITH DELIMITER ',' NULL '' CSV HEADER;" -p 5432 -d port_authority -U port_authority
@@ -133,12 +140,14 @@ psql -c "COPY gtfs_transfers FROM '/Users/Shared/transfers.txt' WITH DELIMITER '
 psql -c "COPY gtfs_trips FROM '/Users/Shared/trips.txt' WITH DELIMITER ',' NULL '' CSV HEADER;" -p 5432 -d port_authority -U port_authority
 ```
 
+
+Set the start and end time of each trip.
+
+SQL
 ```sql
 ALTER TABLE gtfs_trips ADD start_time time;
 ALTER TABLE gtfs_trips ADD end_time time;
 ```
-
-Set the start time of each trip.
 
 
 ```sql
@@ -152,8 +161,6 @@ FROM (
 WHERE t1.trip_id = t2.trip_id;
 ```
 
-
-Set the end time of each trip.
 
 ```sql
 UPDATE gtfs_trips AS t1
@@ -170,8 +177,7 @@ WHERE t1.trip_id = t2.trip_id;
 ```
 
 
-
-Get active trips.
+Example query to get active trips.
 
 
 ```sql
@@ -187,6 +193,7 @@ WHERE trip_id IN (
 departure_time <= CURRENT_TIME;
 ```
 
+
 Add PostGIS to our database.
 
 
@@ -199,7 +206,8 @@ UPDATE gtfs_stops SET geom = ST_SetSRID( ST_MakePoint(stop_lon, stop_lat), 4326)
 
 ```
 
-Create lines for each of the shapes.
+
+Create a new lines table for each of the shapes.
 
 
 ```sql
@@ -222,34 +230,19 @@ WHERE s.shape_id = t.shape_id;
 ```
 
 
-Export the lines to geojson for the web app.
+Export the route lines to geojson for the web app.
 
+
+Bash
 ```bash
 ogr2ogr -f GeoJSON out.json "PG:host=localhost dbname=port_authority user=port_authority password=port_authority" -sql 'select shape_id, geom from gtfs_shape_lines;'
 ```
 
 
+Ruby code to get the current latitude and longitude for active trips at a given time. For trips that are at a stop, it returns the stop position. For trips that are between stops, it interpolates the position along the route path linearly. So if the last observed stop was at 08:58 and the next stop is at 09:02, at 09:00 you're halfway along the route to the next stop. This takes a while.
 
 
-
-```sql
-CREATE TEMP TABLE active_trip_stops AS SELECT gtfs_stop_times.trip_id, gtfs_stop_times.stop_sequence, gtfs_stops.geom
-FROM gtfs_stop_times JOIN gtfs_stops ON gtfs_stop_times.stop_id = gtfs_stops.stop_id
-WHERE trip_id IN (
-	SELECT trip_id
-	FROM gtfs_trips t
-	WHERE 
-	  t.start_time <= time '09:00' AND 
-	  t.end_time >= time '09:00'
-) AND
-departure_time <= time '09:00';
-
-CREATE TEMP TABLE active_trip_stop_paths AS SELECT trip_id, ST_MakeLine(geom ORDER BY t2.stop_sequence) as geom
-FROM active_trip_stops AS t2
-GROUP BY trip_id;
-```
-
-
+Ruby
 ```ruby
 require 'pg'
 require 'json'
@@ -290,15 +283,4 @@ File.open('/Users/Shared/positions.json','wb') do |f|
 end
 
 ```
-
-
-
-
-
-
-exec "ogr2ogr -f GeoJSON out-#{t}.json 'PG:host=localhost dbname=port_authority user=port_authority password=port_authority' -sql "
-
-
-
-
 
