@@ -29,7 +29,8 @@
 
       <p>Vehicle position data was extracted from the Port Authority's <a href="http://www.portauthority.org/paac/CompanyInfoProjects/DeveloperResources.aspx" target="_blank">GTFS files</a>. Using PostGIS along with stop and route data, vehicle positions were computed for each minute of the day.</p>
 
-      <p>The routes are displayed on an SVG layer using <a href="http://www.d3js.org" target="_blank">d3.js</a>, while the circles are animated on a canvas layer. Each frame interpolates all vehicles' position between minutes to make the animation smooth. This is why the circle don't follow the route paths exactly.</p>
+      <p>The routes are displayed on an SVG layer using <a href="http://www.d3js.org" target="_blank">d3.js</a>, while the circles are animated on a canvas layer. Each frame interpolates all vehicles' position between minutes to make the animation smooth.</p>
+      <p>There are a few data anomalies where vehicles jump between positions. This is either due to errors when computing the nearest points on the routes or errors in the data.</p>
     </div>
 
   </div>
