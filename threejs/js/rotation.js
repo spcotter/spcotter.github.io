@@ -105,6 +105,8 @@
     var t = 'mouse_move: ' + mouse_move.x + ',' + mouse_move.y;
     console.log(t);
     log.text(t);
+
+    e.preventDefault();
   }
 
   window.addEventListener( 'touchstart', touchstart, false );
