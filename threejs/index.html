@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Playing with WebGL</title>
+    <script src="js/three.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.js"></script>
+
+
+    <style>
+      body {
+        margin: 0px;
+        overflow: hidden;
+      }
+    </style>
+  <body>
+    
+    <div id="webGL-container"></div>
+
+    <script type="x-shader/x-vertex" id="vertexshader">
+      attribute float size;
+      attribute vec3 customColor;
+      varying vec3 vColor;
+      void main() {
+        vColor = customColor;
+        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+        gl_PointSize = 5.0;
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragmentshader">
+        uniform vec3 color;
+        uniform float alpha;
+
+        varying vec3 vColor;
+
+        void main() {
+          gl_FragColor = vec4( color * vColor, alpha );
+        }
+    </script>
+
+    <script src="js/main.js"></script>
