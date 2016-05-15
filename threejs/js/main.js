@@ -1,41 +1,38 @@
-var retirement_model_formula = function(d){
-  var logit = -28.93320997;
+var age_scale = d3.scale.linear()
+      .domain([0,1])
+      .range([50,100]),
+    tenure_scale = d3.scale.linear()
+      .domain([0,1])
+      .range([0,60]);
 
-  logit += d.age * 0.520537481;
 
-  logit += d.age * d.age * -0.001971271;
-  
-  logit += d.tenure * 0.366612123;
+var mesh_function = function(u,v){
 
-  logit += d.tenure * d.age * -0.004264868;
-  
-  logit += d.tenure * d.tenure * -0.001450424;
+  var age = age_scale(u),
+      tenure = tenure_scale(v),
+      logit = -28.93320997,
+      vector;
 
-  return 1/(1 + Math.exp(-logit));
-}
+  logit += age * 0.520537481;
+  logit += age * age * -0.001971271;
+  logit += tenure * 0.366612123;
+  logit += tenure * age * -0.004264868;
+  logit += tenure * tenure * -0.001450424;
+  logit = 1/(1 + Math.exp(-logit));
 
-var length = (100 - 50 + 1) * (60 - 0 + 1),
-    positions = new Float32Array( length * 3 ),
-    i3 = 0;
+  vector = new THREE.Vector3(age*2, logit*200, tenure*2);
 
-for(var age = 50; age <= 100; age++){
-  for(var tenure = 0; tenure <= 60; tenure++){
-      positions[ i3 + 0 ] = age * 2;
-      positions[ i3 + 1 ] = tenure * 2;
-      positions[ i3 + 2 ] = retirement_model_formula({ age: age, tenure: tenure }) * 200;
-      i3 += 3;
-  }
-}
+  return vector;
+};
 
-console.log(positions);
 
 
 (function(){
   window.scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  window.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  window.renderer = new THREE.WebGLRenderer({ antialias: true });
 
-  renderer.setClearColor(0x000000);
+  renderer.setClearColor(0xffffff);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMapEnabled = true;
   renderer.shadowMapSoft = true;
@@ -43,32 +40,52 @@ console.log(positions);
   var axis = new THREE.AxisHelper(100);
   scene.add(axis);
 
-  var grid = new THREE.GridHelper(50,5);
-  var color = new THREE.Color(0xefefef);
-  grid.setColors(color,color);
+  // grid size
+  var grid_color = new THREE.Color(0xdddddd),
+      grid_size = 100,
+      grid_lines = 5;
+ 
+  window.y_grid = new THREE.GridHelper(grid_size, grid_lines);
+  y_grid.setColors(grid_color, grid_color);
+  y_grid.position.set(grid_size, 0, grid_size);
+  scene.add(y_grid);
 
-  scene.add(grid);
 
-  // var cubeGeometry = new THREE.BoxGeometry(5, 5, 5);
-  // var cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff3300, wireframe: false });
-  // var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+  window.z_grid = new THREE.GridHelper(grid_size, grid_lines);
+  z_grid.setColors(grid_color, grid_color);
+  z_grid.rotation.x = -0.5 * Math.PI;
+  z_grid.position.set(grid_size, grid_size,0);
+  scene.add(z_grid);
 
-  // cube.position.x = 2.5;
-  // cube.position.y = 2.5;
-  // cube.position.z = 2.5;
-  // cube.castShadow = true;
 
-  // scene.add(cube);
+  window.x_grid = new THREE.GridHelper(grid_size, grid_lines);
+  x_grid.setColors(grid_color,grid_color);
+  x_grid.rotation.z = -0.5 * Math.PI;
+  x_grid.position.set(0, grid_size, grid_size);
+  scene.add(x_grid);
 
-  // var planeGeometry = new THREE.PlaneGeometry(30,30,30);
-  // var planeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  // var plane = new THREE.Mesh(planeGeometry,planeMaterial);
+  window.set_age = function(age){
+    var x =  2 * age,
+        z = z_grid.position.z;
+        y = mesh_function(age_scale.invert(age), tenure_scale.invert(z/2)).y;
+    
+    x_grid.position.x = x;
+    y_grid.position.y = y;
 
-  // plane.rotation.x = -0.5 * Math.PI;
-  // plane.receiveShadow = true;
+    render();
+  };
 
-  // scene.add(plane);
 
+  window.set_tenure = function(tenure){
+    var x = x_grid.position.x,
+        z =  2 * tenure;
+        y = mesh_function(age_scale.invert(x/2), tenure_scale.invert(tenure)).y;
+    
+    z_grid.position.z = z;
+    y_grid.position.y = y;
+
+    render();
+  };
 
 
   var spotLight = new THREE.SpotLight(0xffffff);
@@ -82,109 +99,38 @@ console.log(positions);
   scene.add(spotLight);
 
 
-  camera.position.x = 350;
-  camera.position.y = 350;
-  camera.position.z = 350;
+  camera.position.set(300,300,300);
 
   camera.lookAt(scene.position);
 
   var guiControls = new function(){
-    this.rotationX = camera.rotation.x;
-    this.rotationY = camera.rotation.y;
-    this.rotationZ = camera.rotation.z;
-
-    this.positionX = camera.position.x;
-    this.positionY = camera.position.y;
-    this.positionZ = camera.position.z;
+    this.age = 0;
+    this.tenure = 0;
   };
 
 
   var datGUI = new dat.GUI();
-  datGUI.add(guiControls, 'rotationX', -Math.PI, Math.PI);
-  datGUI.add(guiControls, 'rotationY', -Math.PI, Math.PI);
-  datGUI.add(guiControls, 'rotationZ', -Math.PI, Math.PI);
+  datGUI.add(guiControls, 'age', 0, 100);
+  datGUI.add(guiControls, 'tenure', 0, 60);
 
-  datGUI.add(guiControls, 'positionX', 40, 600);
-  datGUI.add(guiControls, 'positionY', 40, 600);
-  datGUI.add(guiControls, 'positionZ', 40, 600);
-
-  // create the point variables
-  var pointCount = 1000,
-      points = new THREE.BufferGeometry(),
-      // texture = e=THREE.ImageUtils.loadTexture('./circle.png'),
-      // pMaterial = new THREE.PointsMaterial({map:texture, size: 2});
-      uniforms = {
-        color: { type: "c", value: new THREE.Color( 0xffffff )},
-        alpha: { value: 1 }
-      },
-      shaderMaterial = new THREE.ShaderMaterial( {
-        uniforms:       uniforms,
-        vertexShader:   document.getElementById( 'vertexshader' ).textContent,
-        fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-        transparent:    true
-      });
+  var segments = 20,
+    graphGeometry = new THREE.ParametricGeometry( mesh_function, segments, segments, true ),
+    graphMaterial = new THREE.MeshBasicMaterial({ color: 0x4682B4 });
 
 
+  var graphMesh = new THREE.Mesh( graphGeometry, graphMaterial ),
+      wireframe = new THREE.WireframeHelper( graphMesh, 0xdf7c34 );
 
-  var sizes = new Float32Array( length * 1 ),
-      colors = new Float32Array( length * 3 ),
-      color = new THREE.Color();
-  // now create the individual points
+  scene.add(wireframe);
 
-  for ( var i = 0, i3 = 0; i < length; i ++, i3 += 3 ) {
-
-      // positions[ i3 + 0 ] = Math.random() * 50 - 25;
-      // positions[ i3 + 1 ] = Math.random() * 50 - 25;
-      // positions[ i3 + 2 ] = Math.random() * 50 - 25;
-
-      // color.setHSL( i / pointCount, 1.0, 0.5 );
-
-      // colors[ i3 + 0 ] = color.r;
-      // colors[ i3 + 1 ] = color.g;
-      // colors[ i3 + 2 ] = color.b;
-
-      colors[ i3 + 0 ] = 0.5;
-      colors[ i3 + 1 ] = 1;
-      colors[ i3 + 2 ] = 1;
-
-      // console.log(color.r);
-
-      sizes[ i ] = 20;
-    }
-
-  points.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-  // points.addAttribute( 'alpha', new THREE.BufferAttribute( alphas, 1 ) );
-  points.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
-  points.addAttribute( 'size', new THREE.BufferAttribute( sizes, 1 ) );
+  // var light = new THREE.PointLight(0xffffff);
+  // light.position.set(0,500,0);
+  // scene.add(light);
 
 
-
-  window.points = points;
-
-  // create the point system
-  var pointSystem = new THREE.Points(points, shaderMaterial);
-
-  window.pointSystem = pointSystem;
-  // add it to the scene
-  scene.add(pointSystem);
-
-
-
-  function render(){
-    // camera.rotation.x = guiControls.rotationX;
-    // camera.rotation.y = guiControls.rotationY;
-    // camera.rotation.z = guiControls.rotationZ;
-
-    // // sphere.rotation.x += 0.05;
-
-    // camera.position.x = guiControls.positionX;
-    // camera.position.y = guiControls.positionY;
-    // camera.position.z = guiControls.positionZ;
-
-
-    // requestAnimationFrame(render);
+  window.render = function(){
     renderer.render(scene, camera);
-  }
+  };
 
 
 
@@ -212,7 +158,7 @@ console.log(positions);
             var dx = ev.clientX - sx;
             var dy = ev.clientY - sy;
             scene.rotation.y += dx * 0.01;
-            scene.rotation.z += dy * 0.01;
+            // scene.rotation.z += dy * 0.01;
             camera.position.y += dy;
             sx += dx;
             sy += dy;
@@ -254,10 +200,32 @@ console.log(positions);
       render();
   }
 
+  window.raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+
+function onMouseMove( event ) {
+
+  // calculate mouse position in normalized device coordinates
+  // (-1 to +1) for both components
+
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;   
+
+}
+  setInterval(function(){
+    raycaster.setFromCamera( mouse, camera ); 
+    console.log(raycaster.ray.origin);
+  }, 2000)
 
 
-  document.body.addEventListener( 'mousewheel', mousewheel, false );
-  document.body.addEventListener( 'DOMMouseScroll', mousewheel, false ); // firefox
+window.addEventListener( 'mousemove', onMouseMove, false );
+
+window.requestAnimationFrame(render);
+
+
+
+  // document.body.addEventListener( 'mousewheel', mousewheel, false );
+  // document.body.addEventListener( 'DOMMouseScroll', mousewheel, false ); // firefox
 
 
 
