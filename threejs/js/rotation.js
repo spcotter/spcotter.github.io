@@ -77,9 +77,39 @@
   window.addEventListener( 'mouseup', mouseup, false );
   window.addEventListener( 'mousemove', mousemove, false );
 
-  window.addEventListener( 'touchstart', mousedown, false );
-  window.addEventListener( 'touchend', mouseup, false );
-  window.addEventListener( 'touchmove', mousemove, false );
+  var touchstart = function(e) {
+    down = true;
+    mouse_start.x = e.touches[0].clientX;
+    mouse_start.y = e.touches[0].clientY;
+    var t = 'mouse_start:' + mouse_start.x + ',' + mouse_start.y
+    console.log(t);
+    log.text(t);
+  };
+
+  var touchend = function() {
+    down = false;
+    var t = 'mouse_up';
+    console.log(t);
+    log.text(t);
+  };
+
+  var touchmove = function( e ) {
+    if(!down) return;
+    // calculate mouse position in normalized device coordinates
+    // (-1 to +1) for both components
+    mouse_move.x = e.touches[0].clientX;
+    // mouse_move.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+    mouse_move.y = e.touches[0].clientY;   
+    // mouse_move.y = - ( e.clientY / window.innerHeight ) * 2 + 1;   
+
+    var t = 'mouse_move: ' + mouse_move.x + ',' + mouse_move.y;
+    console.log(t);
+    log.text(t);
+  }
+
+  window.addEventListener( 'touchstart', touchstart, false );
+  window.addEventListener( 'touchend', touchend, false );
+  window.addEventListener( 'touchmove', touchmove, false );
 
   render();
 
