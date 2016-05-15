@@ -78,7 +78,6 @@
   window.addEventListener( 'mousemove', mousemove, false );
 
   var touchstart = function(e) {
-    down = true;
     mouse_start.x = e.touches[0].clientX;
     mouse_start.y = e.touches[0].clientY;
     var t = 'mouse_start:' + mouse_start.x + ',' + mouse_start.y
@@ -87,24 +86,37 @@
   };
 
   var touchend = function() {
-    down = false;
     var t = 'mouse_up';
     console.log(t);
     log.text(t);
   };
 
   var touchmove = function( e ) {
-    if(!down) return;
-    // calculate mouse position in normalized device coordinates
-    // (-1 to +1) for both components
-    mouse_move.x = e.touches[0].clientX;
-    // mouse_move.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-    mouse_move.y = e.touches[0].clientY;   
-    // mouse_move.y = - ( e.clientY / window.innerHeight ) * 2 + 1;   
+    if(e.touches.length == 1){
+      // calculate mouse position in normalized device coordinates
+      // (-1 to +1) for both components
+      mouse_move.x = e.touches[0].clientX;
+      // mouse_move.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+      mouse_move.y = e.touches[0].clientY;   
+      // mouse_move.y = - ( e.clientY / window.innerHeight ) * 2 + 1;   
 
-    var t = 'mouse_move: ' + mouse_move.x + ',' + mouse_move.y;
-    console.log(t);
-    log.text(t);
+      var t = 'touch_move: ' + mouse_move.x + ',' + mouse_move.y;
+      console.log(t);
+      log.text(t);
+    } else {
+            // calculate mouse position in normalized device coordinates
+      // (-1 to +1) for both components
+      mouse_move.x = e.touches[0].clientX;
+      // mouse_move.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+      mouse_move.y = e.touches[0].clientY;   
+      // mouse_move.y = - ( e.clientY / window.innerHeight ) * 2 + 1;   
+
+      var t = 'touch_move 1: ' + mouse_move.x + ',' + mouse_move.y + '<br>';
+      t +='touch_move 2: ' + e.touches[0].clientX + ',' + e.touches[1].clientY;
+      console.log(t);
+      log.text(t);
+    }
+
 
     e.preventDefault();
   }
