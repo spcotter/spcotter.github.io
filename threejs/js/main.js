@@ -110,8 +110,15 @@ var mesh_function = function(u,v){
 
 
   var datGUI = new dat.GUI();
-  datGUI.add(guiControls, 'age', 0, 100);
-  datGUI.add(guiControls, 'tenure', 0, 60);
+  datGUI.add(guiControls, 'age', 0, 100).onFinishChange(function(age){
+    set_age(age);
+    render();
+  });
+
+  datGUI.add(guiControls, 'tenure', 0, 60).onFinishChange(function(tenure){
+    set_tenure(tenure);
+    render();
+  });
 
   var segments = 20,
     graphGeometry = new THREE.ParametricGeometry( mesh_function, segments, segments, true ),
@@ -200,32 +207,10 @@ var mesh_function = function(u,v){
       render();
   }
 
-  window.raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2();
-
-function onMouseMove( event ) {
-
-  // calculate mouse position in normalized device coordinates
-  // (-1 to +1) for both components
-
-  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;   
-
-}
-  setInterval(function(){
-    raycaster.setFromCamera( mouse, camera ); 
-    console.log(raycaster.ray.origin);
-  }, 2000)
 
 
-window.addEventListener( 'mousemove', onMouseMove, false );
-
-window.requestAnimationFrame(render);
-
-
-
-  // document.body.addEventListener( 'mousewheel', mousewheel, false );
-  // document.body.addEventListener( 'DOMMouseScroll', mousewheel, false ); // firefox
+  $(document).on('mousewheel', '#webGL-container', mousewheel);
+  $(document).on('DOMMouseScroll', '#webGL-container', mousewheel);
 
 
 

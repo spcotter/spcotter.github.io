@@ -36,7 +36,6 @@
 
   $('#webGL-container').append(renderer.domElement);
 
-  window.raycaster = new THREE.Raycaster();
   var mouse_start = new THREE.Vector2(),
       mouse_move = new THREE.Vector2(),
       down = false;
@@ -59,19 +58,67 @@
     log.text(t);
   };
 
-  var mousemove = function( e ) {
-    if(!down) return;
-    // calculate mouse position in normalized device coordinates
-    // (-1 to +1) for both components
-    mouse_move.x = e.clientX;
-    // mouse_move.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-    mouse_move.y = e.clientY;   
-    // mouse_move.y = - ( e.clientY / window.innerHeight ) * 2 + 1;   
 
-    var t = 'mouse_move: ' + mouse_move.x + ',' + mouse_move.y;
-    console.log(t);
-    log.text(t);
+
+  var touch1 = new THREE.Vector2(),
+    touch2 = new THREE.Vector2(),
+    touch1Prev = new THREE.Vector2(),
+    touch2Prev = new THREE.Vector2(),
+    rotV = new THREE.Quaternion(),
+
+    mouse_diff = new THREE.Vector2(),
+    // touchDiffPrev = new THREE.Vector2(),
+    // touchCentre = new THREE.Vector2(),
+    // touchCentrePrev = new THREE.Vector2(),
+    axis = new THREE.Vector3(),
+    // axis2 = new THREE.Vector3(),
+    quaternion = new THREE.Quaternion(),
+    // rot2 = new THREE.Quaternion(),
+    adjq = new THREE.Quaternion();
+
+
+  var mousemove = function (event) {
+    event.preventDefault();
+
+    if(!down) return;
+
+    mouse_move.set(event.clientX, event.clientY);
+
+    var angle = Math.acos(mouse_start.dot(mouse_move) / mouse_start.length() / mouse_move.length());
+
+    console.log(axis);
+
+    if(angle){
+      axis.crossVectors(mouse_start, mouse_move).normalize();
+      console.log(axis);
+      quaternion.setFromAxisAngle(axis, angle);
+    }
+
+    adjq = scene.quaternion;
+    adjq.multiplyQuaternions(quaternion, adjq);
+    adjq.normalize();
+    scene.setRotationFromQuaternion(adjq);
+    
+    render();
   }
+
+
+  // var mousemove = function( e ) {
+    // if(!down) return;
+  //   // calculate mouse position in normalized device coordinates
+  //   // (-1 to +1) for both components
+  //   mouse_move.x = e.clientX;
+  //   // mouse_move.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+  //   mouse_move.y = e.clientY;   
+  //   // mouse_move.y = - ( e.clientY / window.innerHeight ) * 2 + 1;   
+
+
+  //   rot1.setFromAxisAngle(axis1, (Math.atan2(touchDiffPrev.y, touchDiffPrev.x) - Math.atan2(touchDiff.y, touchDiff.x))).normalize();
+
+  //   var t = 'mouse_move: ' + mouse_move.x + ',' + mouse_move.y;
+  //   console.log(t);
+  //   log.text(t);
+  // }
 
   window.addEventListener( 'mousedown', mousedown, false );
   window.addEventListener( 'mouseup', mouseup, false );
@@ -123,21 +170,21 @@
 
 
 
-  var touch1 = new THREE.Vector2(),
-    touch2 = new THREE.Vector2(),
-    touch1Prev = new THREE.Vector2(),
-    touch2Prev = new THREE.Vector2(),
-    rotV = new THREE.Quaternion(),
+  // var touch1 = new THREE.Vector2(),
+  //   touch2 = new THREE.Vector2(),
+  //   touch1Prev = new THREE.Vector2(),
+  //   touch2Prev = new THREE.Vector2(),
+  //   rotV = new THREE.Quaternion(),
 
-    touchDiff = new THREE.Vector2(),
-    touchDiffPrev = new THREE.Vector2(),
-    touchCentre = new THREE.Vector2(),
-    touchCentrePrev = new THREE.Vector2(),
-    axis1 = new THREE.Vector3(),
-    axis2 = new THREE.Vector3(),
-    rot1 = new THREE.Quaternion(),
-    rot2 = new THREE.Quaternion(),
-    adjq = new THREE.Quaternion();
+  //   touchDiff = new THREE.Vector2(),
+  //   touchDiffPrev = new THREE.Vector2(),
+  //   touchCentre = new THREE.Vector2(),
+  //   touchCentrePrev = new THREE.Vector2(),
+  //   axis1 = new THREE.Vector3(),
+  //   axis2 = new THREE.Vector3(),
+  //   rot1 = new THREE.Quaternion(),
+  //   rot2 = new THREE.Quaternion(),
+  //   adjq = new THREE.Quaternion();
 
 
   var touchmove = function (event) {
@@ -162,9 +209,9 @@
       scene.scale.multiplyScalar(touchDiff.length() / touchDiffPrev.length());
 
       touch1Prev.copy(touch1);
-      touch2Prev.copy(touch2)
+      touch2Prev.copy(touch2);
     }
-  }
+  };
 
 
   window.addEventListener( 'touchstart', touchstart, false );
