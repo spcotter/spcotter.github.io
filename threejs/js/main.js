@@ -140,82 +140,49 @@ var mesh_function = function(u,v){
   };
 
 
+  var controls = new THREE.TrackballControls( camera );
+  
+  controls.rotateSpeed = 2.0;
+  controls.zoomSpeed = 1.2;
+  controls.panSpeed = 0.8;
 
-  window.camera = camera;
+  controls.noZoom = false;
+  controls.noPan = false;
+
+  controls.staticMoving = true;
+  controls.dynamicDampingFactor = 0.3;
+
+  controls.keys = [ 65, 83, 68 ];
+
+  controls.addEventListener( 'change', render );
 
   $('#webGL-container').append(renderer.domElement);
+ 
+  function onWindowResize() {
 
-  var down = false;
-  var sx = 0,
-    y = 0;
-        
-    window.onmousedown = function(ev) {
-        down = true;
-        sx = ev.clientX;
-        sy = ev.clientY;
-    };
-    window.onmouseup = function() {
-        down = false;
-    };
-    window.onmousemove = function(ev) {
-      ev.preventDefault();
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
 
-      // console.log(ev)
-        if (down) {
-            var dx = ev.clientX - sx;
-            var dy = ev.clientY - sy;
-            scene.rotation.y += dx * 0.01;
-            // scene.rotation.z += dy * 0.01;
-            camera.position.y += dy;
-            sx += dx;
-            sy += dy;
-          render();
+        renderer.setSize( window.innerWidth, window.innerHeight );
 
-        } 
+        controls.handleResize();
+
+        render();
+
       }
 
-    function mousewheel( e ) {      
-      console.log(e);
-      var d = ((typeof e.wheelDelta != "undefined")?(-e.wheelDelta):e.detail);
-      d = 10 * ((d>0)?1:-1);
+      function animate() {
 
+        requestAnimationFrame( animate );
+        controls.update();
 
-      var cPos = camera.position;
-      if (isNaN(cPos.x) || isNaN(cPos.y) || isNaN(cPos.y))
-        return;
-
-      var r = cPos.x*cPos.x + cPos.y*cPos.y;
-      var sqr = Math.sqrt(r);
-      var sqrZ = Math.sqrt(cPos.z*cPos.z + r);
-
-
-      var nx = cPos.x + ((r==0)?0:(d * cPos.x/sqr));
-      var ny = cPos.y + ((r==0)?0:(d * cPos.y/sqr));
-      var nz = cPos.z + ((sqrZ==0)?0:(d * cPos.z/sqrZ));
-
-      console.log(nx);
-      console.log(ny);
-      console.log(nz);
-
-      if (isNaN(nx) || isNaN(ny) || isNaN(nz))
-        return;
-
-      cPos.x = nx;
-      cPos.y = ny;
-      cPos.z = nz;
-
-      render();
-  }
+      }
 
 
 
-  $(document).on('mousewheel', '#webGL-container', mousewheel);
-  $(document).on('DOMMouseScroll', '#webGL-container', mousewheel);
+  window.addEventListener( 'resize', onWindowResize, false );
 
-
-
-
-    render();
-  // renderer.render(scene, camera);
+  render();
+  animate();
 
 })();
