@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Crashes</title>
+<!-- jruby -run -e httpd . -p 9090 -->
+
+  <script src="//code.jquery.com/jquery-1.12.1.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+  <script src="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script src="./L.CanvasOverlay.js"></script>
+  <script src="./easing.js"></script>
+  <!-- <script src="./L.D3SvgOverlay.min.js"></script> -->
+
+  <link rel="stylesheet" href="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+
+<style>
+
+  body {
+    padding: 0;
+    margin: 0;
+  }
+
+  html, body, #map {
+    height: 100%;
+    width: 100%;
+  }
+
+  #time {
+    position: absolute;
+    top: 1px;
+    left: 50px;
+  }
+
+  #current-time {
+    color: white;
+    font-size: 28px;
+  }
+
+  #hour, #minute, #period {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    color: black;
+    display: inline;
+    width: 50px;
+    text-align: center;
+    background-color: white;
+  }
+
+
+  #active-trips {
+    color: #666;
+    font-size: 16px;
+  }
+
+  #speed {
+    position: absolute;
+    top: 65px;
+    right: 27px;
+  }
+
+  #speed input[type=range][orient=vertical]{
+      writing-mode: bt-lr; /* IE */
+      -webkit-appearance: slider-vertical; /* WebKit */
+      width: 8px;
+      height: 150px;
+      padding: 0 5px;
+  }
+
+  #running {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 8px;
+  }
+
+
+  #blurb {
+    position: absolute;
+    width: 100%;
+    bottom: 0px;
+    left: 0px;
+    font-size: 16px;
+    background-color: white;
+    padding: 8px;
+    opacity: 0.6;
+  }
+
+  .routes {
+    opacity: 0.3;
+  }
+
+  .route {
+    fill: none;
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+</style>
+
+<body>
+
+
+  <div id="map"></div>
+
+  <div id="time">
+    <div id="current-time"></div>
+  </div>
+
+<!--   <div id="running">
+    <button id="run" class="btn btn-small btn-default"><i class="fa fa-stop"></i></button>
+  </div>
+
+  <div id="speed">
+    <input id="speed-slider" orient="vertical" type="range" min="0" max="300" step="10" value="290"/>
+  </div> -->
+<!-- 
+  <div id="blurb">
+    <a href="www.portauthority.org" target="_blank">Port Authority of Allegheny County</a> serves 207,238 riders on the average weekday, making over 6,500 trips.<br/><span style="font-size: 12px;">Weekday Service, January to March 2016</span>
+  </div> -->
+
+
+
+  <script>
+    // request frame polyfill;
+    window.requestAnimFrame = (function(){
+      return  window.requestAnimationFrame       ||
+              window.webkitRequestAnimationFrame ||
+              window.mozRequestAnimationFrame    ||
+              function( callback ){
+                window.setTimeout(callback, 1000 / 60);
+              };
+    })();
+
+
+    var map = new L.Map('map', {
+            center: [40.449690349293654, -79.96192932128906], 
+            zoom: 10
+          }),
+        // tileLayer = new L.TileLayer('http://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png');
+        tileLayer = new L.TileLayer('http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png');
+
+    // tileLayer.setOpacity(0.6);
+
+    map.addLayer(tileLayer);
+
+    map._initPathRoot();
+
+    window.frames_per_m = 10;
+
+    var time = d3.select('#current-time');
+
+
+    var Circle = function(spec){
+      var self = {
+        duration: 10 *  window.frames_per_m,
+        frame: 0,
+        radius: 4 * (+spec.maj_inj_count + 1),
+        // opacity: (8 - +spec.max_severity_level + 1)/8,
+        opacity: 0.2,
+        radius_easing: 'easeOutQuint',
+        opacity_easing: 'easeInQuart',
+        // fills: ['254,224,210','252,187,161','252,146,114','251,106,74','239,59,44','203,24,29','165,15,21','103,0,13'],
+        fills: ['255,255,204','255,237,160','254,217,118','254,178,76','253,141,60','252,78,42','227,26,28','177,0,38'],
+        fade_after: 0.2
+      };
+    
+
+      for(var p in spec){
+        if(spec.hasOwnProperty(p))
+          self[p] = spec[p];
+      }
+
+      var radius_frames = Math.ceil(self.fade_after * self.duration),
+          opacity_frames = Math.floor((1 - self.fade_after) * self.duration);
+
+      self.get_radius = function(){
+        if(self.frame > self.duration){
+          return 1;
+        } else if(self.frame > radius_frames){
+          return self.radius;
+        } else {
+          return EasingFunctions[self.radius_easing](self.frame / radius_frames) * self.radius;
+        }
+      };
+
+      self.get_fill = function(){
+        var f =  self.fills[8 - (+self.max_severity_level)];
+        return 'rgba(' + f + ',' + self.get_opacity() + ')';
+      };
+
+      self.get_stroke = function(){
+        var f =  self.fills[8 - (+self.max_severity_level)];
+        if(self.frame > self.duration){
+          return 'rgba(' + f + ',' + self.opacity + ')';
+        } else {
+          return 'rgb(' + f + ')';
+        }
+      };
+
+      self.get_opacity = function(){
+        if(self.frame < opacity_frames){
+          return 1.0;
+        } else {
+          return 1 - EasingFunctions[self.opacity_easing]((self.frame - radius_frames) / opacity_frames);
+        }
+      }
+
+      self.geom = [+self.dec_lat, +self.dec_long];
+
+      return self;
+    };
+
+
+    queue()
+      .defer(d3.csv, 'injuries_2014.csv')
+      .await(function(error, data) { 
+        if (error) throw error;
+
+        window.times = {}
+
+        data.forEach(function(d){
+          var t = times[d.time_of_day];
+
+          if(!t){
+            t = []
+            times[d.time_of_day] = t;
+          }
+
+          t.push(Circle(d));
+        });
+
+
+      // I really should consider the number of frames per minute, which is the
+      // unit of iteration in this visualization.
+
+      // Say we want 10 frames per minute.
+      // With an animation duration of 10 frames (166.7ms)
+      // So circles will disappear 10 frames after they appear
+
+
+      var circles_to_draw = []
+          current_frame = 0;
+
+
+      window.current_index = 0;
+
+      window.get_time = function(i){
+        var h = Math.floor(i / 60),
+            m = i % 60,
+            m = m < 10 ? '0' + m : m;
+        return parseInt(h + '' + m);
+      }
+
+      var boom = new Audio('sound.mp3');
+      boom.volume = 1;
+      boom.load();
+
+
+       // Canvas Drawing
+      window.draw = function(){
+        var context = params.canvas.getContext('2d');
+
+        context.clearRect(0, 0, params.canvas.width, params.canvas.height);
+
+          
+
+          // Remove old circles
+          circles_to_draw = circles_to_draw.filter(function(c){
+            return c.frame <= 500;
+          });
+
+
+          if(current_frame % frames_per_m == 0){
+            var current_time = get_time(current_index),
+                new_circles = times[current_time] || [];
+
+            time.text(get_time(current_index));
+
+            new_circles.forEach(function(c){
+              circles_to_draw.push(c);
+            });
+
+            current_index += 1;
+            current_frame = 0;
+          }
+          // Add new circles for the current time
+          
+          var booms = 0;
+
+          // Draw the current circles
+          circles_to_draw.forEach(function(c){
+            point = canvasOverlay._map.latLngToContainerPoint(c.geom);
+
+            context.fillStyle = c.get_fill();
+
+            context.beginPath();
+            context.arc(point.x, point.y, c.get_radius(), 0, Math.PI * 2);
+            context.fill();
+            context.lineWidth = 1;
+            context.strokeStyle = c.get_stroke();
+            context.stroke();
+            context.closePath();
+
+            // if(c.frame == 0){
+            //   setTimeout(function(){
+            //   boom.cloneNode(true).play();
+            // }, Math.random() * 10);   
+            // }
+
+            c.frame += 1;
+          });
+
+          
+          current_frame += 1;
+
+          if(current_index < 1440){
+            requestAnimationFrame(draw);
+          }
+
+          
+          
+
+      };
+
+
+      var drawingOnCanvas = function(canvasOverlay, params) {
+        window.canvasOverlay = canvasOverlay;
+        window.params = params;
+        draw();
+      };
+
+
+        setTimeout(function(){
+          L.canvasOverlay()
+            .drawing(drawingOnCanvas)
+            .addTo(map);
+        }, 2000);
+      
+     
+
+    }); 
+
+  </script>
