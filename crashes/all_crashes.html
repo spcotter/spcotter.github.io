@@ -140,15 +140,15 @@
             zoom: 10
           }),
         // tileLayer = new L.TileLayer('http://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png');
-        tileLayer = new L.TileLayer('http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png');
+        tileLayer = new L.TileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png');
 
-    // tileLayer.setOpacity(0.6);
+    // tileLayer.setOpacity(0.2);
 
     map.addLayer(tileLayer);
 
     map._initPathRoot();
 
-    window.frames_per_m = 5;
+    window.frames_per_m = 10;
 
     var time = d3.select('#current-time');
 
@@ -157,13 +157,12 @@
       var self = {
         duration: 10 *  window.frames_per_m,
         frame: 0,
-        radius: 4 * (+spec.maj_inj_count + 1),
+        radius: (window.params.zoom - 9 + 1) * (+spec.maj_inj_count + 1),
         // opacity: (8 - +spec.max_severity_level + 1)/8,
-        opacity: 0.2,
+        opacity: 0.3,
         radius_easing: 'easeOutQuint',
         opacity_easing: 'easeInQuart',
-        // fills: ['254,224,210','252,187,161','252,146,114','251,106,74','239,59,44','203,24,29','165,15,21','103,0,13'],
-        fills: [/*'255,255,204',*/'255,237,160','254,217,118','254,178,76','253,141,60','252,78,42','227,26,28','177,0,38','128,0,38'],
+        fills: ['255,237,160','254,217,118','254,178,76','253,141,60','252,78,42','227,26,28','177,0,38','128,0,38'],
         fade_after: 0.2
       };
     
@@ -173,40 +172,10 @@
           self[p] = spec[p];
       }
 
-      var radius_frames = Math.ceil(self.fade_after * self.duration),
-          opacity_frames = Math.floor((1 - self.fade_after) * self.duration);
-
-      self.get_radius = function(){
-        if(self.frame > self.duration){
-          return 2;
-        } else if(self.frame > radius_frames){
-          return self.radius;
-        } else {
-          return EasingFunctions[self.radius_easing](self.frame / radius_frames) * self.radius;
-        }
-      };
-
       self.get_fill = function(){
         var f =  self.fills[8 - (+self.max_severity_level)];
-        return 'rgba(' + f + ',' + self.get_opacity() + ')';
+        return 'rgba(' + f + ',' + self.opacity + ')';
       };
-
-      self.get_stroke = function(){
-        var f =  self.fills[8 - (+self.max_severity_level)];
-        if(self.frame > self.duration){
-          return 'rgba(' + f + ',' + self.opacity + ')';
-        } else {
-          return 'rgb(' + f + ')';
-        }
-      };
-
-      self.get_opacity = function(){
-        if(self.frame < opacity_frames){
-          return 1.0;
-        } else {
-          return 1 - EasingFunctions[self.opacity_easing]((self.frame - radius_frames) / opacity_frames);
-        }
-      }
 
       self.geom = [+self.dec_lat, +self.dec_long];
 
@@ -219,19 +188,6 @@
       .await(function(error, data) { 
         if (error) throw error;
 
-        window.times = {}
-
-        data.forEach(function(d){
-          var t = times[d.time_of_day];
-
-          if(!t){
-            t = []
-            times[d.time_of_day] = t;
-          }
-
-          t.push(Circle(d));
-        });
-
 
       // I really should consider the number of frames per minute, which is the
       // unit of iteration in this visualization.
@@ -241,87 +197,25 @@
       // So circles will disappear 10 frames after they appear
 
 
-      var circles_to_draw = []
-          current_frame = 0;
-
-
-      window.current_index = 0;
-
-      window.get_time = function(i){
-        var h = Math.floor(i / 60),
-            m = i % 60,
-            m = m < 10 ? '0' + m : m;
-        return parseInt(h + '' + m);
-      }
-
-      var boom = new Audio('sound.mp3');
-      boom.volume = 1;
-      boom.load();
-
-
        // Canvas Drawing
       window.draw = function(){
         var context = params.canvas.getContext('2d');
 
         context.clearRect(0, 0, params.canvas.width, params.canvas.height);
 
-          
+        // Draw the current circles
+        data.forEach(function(d){
+          var c = Circle(d);
+          point = canvasOverlay._map.latLngToContainerPoint(c.geom);
 
-          // Remove old circles
-          circles_to_draw = circles_to_draw.filter(function(c){
-            return c.frame <= 100;
-          });
+          context.fillStyle = c.get_fill();
 
+          context.beginPath();
+          context.arc(point.x, point.y, c.radius, 0, Math.PI * 2);
+          context.fill();
+          context.closePath();
 
-          if(current_frame % frames_per_m == 0){
-            var current_time = get_time(current_index),
-                new_circles = times[current_time] || [];
-
-            time.text(get_time(current_index));
-
-            new_circles.forEach(function(c){
-              circles_to_draw.push(c);
-            });
-
-            current_index += 1;
-            current_frame = 0;
-          }
-          // Add new circles for the current time
-          
-          var booms = 0;
-
-          // Draw the current circles
-          circles_to_draw.forEach(function(c){
-            point = canvasOverlay._map.latLngToContainerPoint(c.geom);
-
-            context.fillStyle = c.get_fill();
-
-            context.beginPath();
-            context.arc(point.x, point.y, c.get_radius(), 0, Math.PI * 2);
-            context.fill();
-            context.lineWidth = 1;
-            context.strokeStyle = c.get_stroke();
-            context.stroke();
-            context.closePath();
-
-            // if(c.frame == 0){
-            //   setTimeout(function(){
-            //   boom.cloneNode(true).play();
-            // }, Math.random() * 10);   
-            // }
-
-            c.frame += 1;
-          });
-
-          
-          current_frame += 1;
-
-          if(current_index < 1440){
-            requestAnimationFrame(draw);
-          }
-
-          
-          
+        });
 
       };
 
@@ -333,14 +227,12 @@
       };
 
 
-        setTimeout(function(){
-          L.canvasOverlay()
-            .drawing(drawingOnCanvas)
-            .addTo(map);
-        }, 2000);
+      setTimeout(function(){
+        L.canvasOverlay()
+          .drawing(drawingOnCanvas)
+          .addTo(map);
+      }, 2000);
       
-     
-
     }); 
 
   </script>
