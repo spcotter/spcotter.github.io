@@ -73,11 +73,11 @@
 
 
 
-    var Circle = function(spec){
+    var Circle = function(spec, params){
       var self = {
         duration: 10 *  window.frames_per_m,
         frame: 0,
-        radius: 5 * (+spec.maj_inj_count + 1),
+        radius: params.zoom - 9 + 1 * (+spec.maj_inj_count + 1),
         // opacity: (8 - +spec.max_severity_level + 1)/8,
         opacity: 0.3,
         radius_easing: 'easeOutQuint',
@@ -113,7 +113,7 @@
       // Draw the current circles
       console.log(day_data.length)
       day_data.forEach(function(d){
-        var c = Circle(d),
+        var c = Circle(d, params),
             point = canvasOverlay._map.latLngToContainerPoint(c.geom);
 
         context.fillStyle = c.get_fill();
