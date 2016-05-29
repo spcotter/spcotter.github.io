@@ -178,7 +178,7 @@
 
       self.get_radius = function(){
         if(self.frame > self.duration){
-          return 2;
+          return self.radius;
         } else if(self.frame > radius_frames){
           return self.radius;
         } else {

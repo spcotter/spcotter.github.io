@@ -11,6 +11,6 @@ injuries_2014 <- subset(crashes_2014,
 
 dim(injuries_2014)
 
-injuries_2014 <- injuries_2014[,c('time_of_day','maj_inj_count','max_severity_level','dec_lat','dec_long')]
+injuries_2014 <- injuries_2014[,c('day_of_week','collision_type','crash_month','weather','vehicle_count','time_of_day','maj_inj_count','max_severity_level','dec_lat','dec_long')]
 
 write.csv(injuries_2014, file='injuries_2014.csv', row.names=FALSE)
