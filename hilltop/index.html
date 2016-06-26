@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Hilltop Blockwatch</title>
+<!-- jruby -run -e httpd . -p 9090 -->
+
+  <!-- <script src="//code.jquery.com/jquery-1.12.1.min.js"></script> -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/vue/1.0.25/vue.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet.js"></script>
+  <script src="./L.D3SvgOverlay.min.js"></script>
+
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet.css">
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+
+<style>
+
+  body {
+    padding: 0;
+    margin: 0;
+  }
+
+  html, body, #map {
+    height: 100%;
+    width: 100%;
+  }
+  
+  #sidebar {
+    margin-left: 70%;
+    padding: 15px;
+    height: 100%;
+    border-left: 1px solid #ddd;
+    overflow-y: scroll;
+  }
+
+  #map-container {
+    float: left;
+    height: 100%;
+    width: 70%;
+  }
+
+  #blurb {
+    position: absolute;
+    width: 100%;
+    bottom: 0px;
+    left: 0px;
+    font-size: 16px;
+    background-color: white;
+    padding: 8px;
+    opacity: 0.6;
+  }
+
+
+  .parcel {
+    fill: steelblue;
+    stroke-width: 1;
+    opacity: 0.5;
+    stroke: white;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  #tooltip {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    min-height: 25px;
+    max-width: 200px;
+    visibility: visible;
+  }
+
+</style>
+
+<body>
+
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
+    <div id="sidebar">
+      <h1>{{hilltopLength}} Hilltop Properties</h1>
+      <ul>
+        <li v-for="p in hilltopPropertyPins">{{p}}</li>
+      </ul>
+
+<!--       <div v-if="active">
+        <a href="{{link}}" target="_blank">Parcel: {{active.pin}}</a>
+        <p>
+          {{active.propertyhousenum}} {{active.propertyaddress}} <br>
+          {{active.propertycity}}, {{active.propertystate}} {{active.propertyzip}}
+        </p>
+        <p>{{active.fairmarkettotal | dollars}}</p>
+        <img src="{{photo}}" style="max-width: 100%;">
+      </div>
+      <div v-else>{{propertyCount}} Properties</div> -->
+    </div>
+  </div>
+    
+  
+<!-- 
+  <div id="blurb">
+    <a href="www.portauthority.org" target="_blank">Port Authority of Allegheny County</a> serves 207,238 riders on the average weekday, making over 6,500 trips.<br/><span style="font-size: 12px;">Weekday Service, January to March 2016</span>
+  </div> -->
+  <script>
+
+    var map = new L.Map('map', {
+            center: [40.457984, -79.859069], 
+            zoom: 16
+          }),
+        tileLayer = new L.TileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png');
+
+    // tileLayer.setOpacity(0.6);
+
+    map.addLayer(tileLayer);
+
+    map._initPathRoot();
+
+    var dollar_format = d3.format('$,');
+
+    Vue.filter('dollars', function (value) {
+      return dollar_format(value);
+    })
+
+    var vue = new Vue({
+      el: '#sidebar',
+      data: {
+        propertyCount: null,
+        active: null,
+        hilltopPropertyPins: []
+      },
+      computed: {
+        link: function(){
+          return 'http://www2.county.allegheny.pa.us/RealEstate/GeneralInfo.aspx?ParcelID=' + this.active.pin + '&SearchType=3&SearchParcel=' + this.active.pin;
+        },
+        photo: function (){
+          return 'http://photos.county.allegheny.pa.us/iasworld/iDoc2/Services/GetPhoto.ashx?parid=' + this.active.pin + '&jur=002&Rank=1&size=350x263'
+        },
+        hilltopLength: function(){
+          return this.hilltopPropertyPins.length;
+        }
+      }
+    });
+
+    queue()
+      .defer(d3.json, './hilltop_area_parcels.json')
+      .await(function(error, data) { 
+        if (error) throw error;
+
+        window.data = data;
+
+        vue.$data.propertyCount = data.features.length;
+
+        var svg = L.d3SvgOverlay(function(selection, projection){
+
+          var property = 'yearblt',
+            colors = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026'],
+            extent = d3.extent(data.features, function(d){
+                return d.properties[property];
+              }),
+            scale = d3.scale.quantize()
+              .domain(extent)
+              .range(colors);
+
+          var parcels = selection.selectAll('.parcel')
+            .data(data.features, function(d){
+                return d.properties.pin;
+            })
+            .enter().append('path')
+              .attr('class', 'parcel')
+              .attr('d', d3.geo.path()
+                .projection(function(l){
+                  var p = projection.latLngToLayerPoint({ lon: l[0], lat:  l[1] });
+                  return [p.x,p.y];
+                })
+              )
+              .style('fill', function(d){
+                if(d.properties.municode == '866')
+                  return  +d.properties.usecode < 100 ? 'steelblue' : 'lightgreen';
+                else 
+                  return '#ccc';
+              });
+            
+
+            d3.selectAll('path.parcel')
+              .filter(function(d){
+                return d.properties.municode == '866' && +d.properties.usecode < 100;
+              })
+              .on('click', function(d){
+              console.log(d);
+              
+              var pin = d.properties.pin,
+                  index = vue.$data.hilltopPropertyPins.indexOf(pin);
+              if(index < 0){
+                d3.select(this).style('fill','orange')
+                vue.$data.hilltopPropertyPins.push(pin);
+              }
+              else {
+                d3.select(this).style('fill','steelblue')
+                vue.$data.hilltopPropertyPins.$remove(  vue.$data.hilltopPropertyPins[index] );
+              }
+
+
+            });
+             
+
+
+        });
+
+
+        svg.addTo(map);
+
+    }); 
+
+  </script>

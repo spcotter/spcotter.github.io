@@ -1,0 +1,71 @@
+{
+    "beaker": "2",
+    "evaluators": [
+        {
+            "name": "HTML",
+            "plugin": "HTML",
+            "view": {
+                "cm": {
+                    "mode": "htmlmixed"
+                }
+            }
+        },
+        {
+            "name": "JavaScript",
+            "plugin": "JavaScript",
+            "view": {
+                "cm": {
+                    "mode": "javascript",
+                    "background": "#FFE0F0"
+                }
+            },
+            "languageVersion": "ES2015"
+        },
+        {
+            "name": "",
+            "plugin": "IRuby"
+        },
+        {
+            "name": "SQL",
+            "plugin": "SQL",
+            "imports": "",
+            "view": {
+                "cm": {
+                    "mode": "text/x-sql"
+                }
+            },
+            "defaultDatasource": "jdbc:postgresql://localhost/crashes?user=crashes&password=crashes",
+            "classPath": "/Users/stevecotter/Software"
+        }
+    ],
+    "cells": [
+        {
+            "id": "codeTQtEDg",
+            "type": "code",
+            "evaluator": "SQL",
+            "input": {
+                "body": [
+                    "SELECT * FROM crashes LIMIT 100;"
+                ]
+            },
+            "output": {
+                "state": {},
+                "result": {
+                    "type": "BeakerDisplay",
+                    "innertype": "Error",
+                    "object": [
+                        "com.twosigma.beaker.sqlsh.utils.DBConnectionException: Connection URI:jdbc:postgresql://localhost/crashes?user=crashes&password=crashes; No suitable driver"
+                    ]
+                },
+                "selectedType": "BeakerDisplay",
+                "pluginName": "SQL",
+                "shellId": "1b96bd99-a3d7-4988-b389-d66448305a0e",
+                "elapsedTime": 87,
+                "height": 77
+            },
+            "evaluatorReader": true,
+            "lineCount": 1
+        }
+    ],
+    "namespace": {}
+}
