@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Steve Cotter</title>
+<!-- ruby -run -e httpd . -p 9090 -->
+
+  <script src="//code.jquery.com/jquery-1.12.1.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/vue/2.1.10/vue.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.1.1/ekko-lightbox.js"></script>
+  
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.1.1/ekko-lightbox.css" />
+
+<style>
+  h1 {
+    font-weight: normal;
+    font-size: 50px;
+  }
+
+  li.list-group-item {
+    border: none;
+    margin: 10px 0px;
+  }
+
+  .sidebar {
+    position: fixed;
+    width: 20px;
+    background-color: #222;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    color: white;
+  }
+
+
+
+</style>
+
+<body>
+  <div class="sidebar"></div>
+
+  <div  id="vue" class="container" style="margin-left: 20px;">
+    <div class="row">
+      <div class="col-sm-12">
+        
+        <h1>Steve Cotter</h1>
+        <p class="text-muted">
+          Hi. I'm Steve.<br>
+          I live and work in Pittsburgh. Below is a sample of some of my projects.
+        </p>
+
+          <div v-for="p in projects">
+
+            <div class="row">
+             
+              <div class="col-sm-12" style="padding-top: 30px;">
+                <h3 class="list-group-item-heading"> {{ p.name }} </h3>
+                <a v-if="p.link" v-bind:href="p.link" target="_blank"> {{ p.link }} </a>
+                <p class="list-group-item-text lead">{{ p.description }}</p>
+                <small class="text-muted">{{ p.tools }}</small>
+              </div>
+
+              <div class="row">
+                <div class="col-sm-12 clearfix" style="margin-top: 20px;">
+                  <img  v-for="t in p.thumbnails" v-bind:src="t" style="float: left; max-width: 100px; border: 1px solid rgba(0,0,0,0.07); margin-left: 15px;">
+                </div>
+              </div>
+
+            </div>
+          
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    new Vue({
+      el: '#vue',
+      data: {
+        loaded: false,
+        projects: [
+          {
+            name: 'Skills Navigator',
+            description: 'A comptency assessment and reporting app. Users conduct self assessments, view their supervisors assessments of them, and track comptencies over time.',
+            tools: 'Rails, Vue.js, SVG, PostgreSQL',
+            thumbnails: [
+              'images/skills-navigator-thumbnail.png',
+              'images/skills-navigator-1.png',
+              'images/skills-navigator-2.png',
+              'images/skills-navigator-3.png'
+            ]
+          },
+          {
+            name: 'FEVS Survey Reporting',
+            description: 'Results and analysis reporting for the Federal Employee Viewpoint Survey. Built to replace and enhance an inaccessible Tableau dashboard.',
+            tools: 'Rails, Vue.js, SVG, PostgreSQL',
+            link: 'https://apps.econsys.com/fevs-survey-results/summary',
+            thumbnails: [
+              'images/fevs-1.png',
+              'images/fevs-2.png',
+              'images/fevs-3.png'
+            ]
+          },
+          {
+            name: 'MD-715 Analysis',
+            description: 'Automated statistical analyses and reporting of workforce diversity for federal aegencies. Conducts binomial distribution tests again U.S. Census data to determine the probability that the onboard workforce is representative of occupational labor force.',
+            tools: 'Rails, Vue.js, SVG, PostgreSQL, R'
+          },
+          {
+            name: 'Collected',
+            description: 'Real-time content suggestion in Microsoft Office making your word processor aware of all your work. Uses NLP to suggests related snippets of content and slides from your other files as you work. Includes apps for Windows, Mac, and the web. Connects with Google Drive, Dropbox, Box, OneDrive, Salesforce, and Sharepoint. ',
+            tools: 'OpenNLP, Rails, Ember.js, PostgreSQL, Elasticsearch, Objective C, C#, JMP'
+          },
+          {
+            name: 'Identifying Better Jobs for Low-Wage Immigrant Women Workers',
+            description: 'Data visualization of better paying jobs.',
+            tools: 'D3.js, SVG, R',
+            link: 'http://econsys.github.io/iww/'
+          }, 
+          {
+            name: 'Workforce Simulation',
+            description: 'Browser-based simulation modeling of personnel events using logistic regression and optimization.',
+            tools: 'Cobyla.js, D3.js, R, JMP',
+            link: 'http://econsys.github.io/workforce_simulation/'
+          }, 
+          {
+            name: 'Key Drivers - FEVS',
+            description: 'Analysis of the Key Drivers of employee satisfaction for federal agencies.',
+            tools: 'D3.js, SVG, R', 
+            link: 'http://econsys.github.io/key_driver/'
+          },
+          {
+            name: 'Crashes',
+            description: 'A visualization and analysis of Pittsburgh Crash data.',
+            tools: 'PostgreSQL, PostGIS, Leaflet, R',
+            link: 'https://spcotter.github.io/crashes'
+          },
+          {
+            name: 'Visualizing Pittsburgh Transit',
+            description: 'What do 6,500 public transit trip look like?',
+            tools: 'PostgreSQL, PostGIS, Leaflet, HTML5 Canvas',
+            link: 'https://medium.com/@cottermedian/visualizing-pittsburgh-transit-1ab05664b8b3#.ludjfqr90'
+          },
+          {
+            name: 'Healthy Ride Pgh',
+            description: 'Animating ride arcs through time.',
+            tools: 'PostgreSQL, PostGIS, Leaflet, D3.js',
+
+          }
+        ]
+      }
+    })
+
+  </script>
