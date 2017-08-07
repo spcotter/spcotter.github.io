@@ -32,21 +32,19 @@
     color: white;
   }
 
-
-
 </style>
 
 <body>
   <div class="sidebar"></div>
 
-  <div  id="vue" class="container" style="margin-left: 20px;">
+  <div  id="vue" class="container" style="margin-left: 20px; margin-bottom: 30px;">
     <div class="row">
       <div class="col-sm-12">
         
         <h1>Steve Cotter</h1>
         <p class="text-muted">
           Hi. I'm Steve.<br>
-          I live and work in Pittsburgh. Below is a sample of some of my projects.
+          I live and work in Pittsburgh. Below is a sample of my recent work.
         </p>
 
           <div v-for="p in projects">
@@ -87,7 +85,7 @@
           {
             name: 'Skills Navigator',
             description: 'A competency assessment and reporting app. Users conduct self assessments, view their supervisors assessments of them, and track competencies over time.',
-            tools: 'Rails, Vue.js, SVG, PostgreSQL',
+            tools: 'Ruby, Rails, Vue.js, SVG, PostgreSQL',
             thumbnails: [
               'images/skills-navigator-thumbnail.png',
               'images/skills-navigator-1.png',
@@ -120,42 +118,68 @@
             description: 'Real-time content suggestion in Microsoft Office making your word processor aware of all your work. Uses NLP to suggests related snippets of content and slides from your other files as you work. Includes apps for Windows, Mac, and the web. Connects with Google Drive, Dropbox, Box, OneDrive, Salesforce, and Sharepoint. ',
             tools: 'OpenNLP, Rails, Ember.js, PostgreSQL, Elasticsearch, Objective C, C#, JMP',
             link: 'https://www.collected.io',
+            thumbnails: [
+              'images/collected-1.png',
+              'images/collected-2.png'
+            ]
           },
           {
             name: 'Identifying Better Jobs for Low-Wage Immigrant Women Workers',
-            description: 'Data visualization of better paying jobs.',
+            description: 'Data visualization of better paying jobs for low-wage immigrant working women by clustering O*Net skills data.',
             tools: 'D3.js, SVG, R',
-            link: 'http://econsys.github.io/iww/'
+            link: 'http://econsys.github.io/iww/',
+            thumbnails: [
+              'images/iww-1.png',
+            ]
           }, 
           {
             name: 'Workforce Simulation',
             description: 'Browser-based simulation modeling of personnel events using logistic regression and optimization.',
             tools: 'Cobyla.js, D3.js, R, JMP',
-            link: 'http://econsys.github.io/workforce_simulation/'
+            link: 'http://econsys.github.io/workforce_simulation/',
+            thumbnails: [
+              'images/simulator-1.png',
+            ]
           }, 
           {
             name: 'Key Drivers - FEVS',
-            description: 'Analysis of the Key Drivers of employee satisfaction for federal agencies.',
+            description: 'Analysis of the Key Drivers of employee satisfaction for federal agencies using LASSO regression.',
             tools: 'D3.js, SVG, R', 
-            link: 'http://econsys.github.io/key_driver/'
+            link: 'http://econsys.github.io/key_driver/',
+            thumbnails: [
+              'images/key-drivers-1.png',
+              'images/key-drivers-2.png'
+            ]
           },
           {
             name: 'Crashes',
-            description: 'A visualization and analysis of Pittsburgh Crash data.',
-            tools: 'PostgreSQL, PostGIS, Leaflet, R',
-            link: 'https://spcotter.github.io/crashes/2014_crashes.html'
+            description: 'A visualization and analysis of Pittsburgh crash data.',
+            tools: 'PostgreSQL, PostGIS, Leaflet, R, D3.js',
+            link: 'https://github.com/spcotter/crashes',
+            thumbnails: [
+              'images/crashes-1.png',
+              'images/crashes-2.png',
+              'images/crashes-3.png'
+            ]
           },
           {
             name: 'Visualizing Pittsburgh Transit',
             description: 'What do 6,500 public transit trip look like?',
-            tools: 'PostgreSQL, PostGIS, Leaflet, HTML5 Canvas',
-            link: 'https://medium.com/@cottermedian/visualizing-pittsburgh-transit-1ab05664b8b3#.ludjfqr90'
+            tools: 'PostgreSQL, PostGIS, Ruby, D3.js, Leaflet, HTML5 Canvas',
+            link: 'https://medium.com/@cottermedian/visualizing-pittsburgh-transit-1ab05664b8b3#.ludjfqr90',
+            thumbnails: [
+              'images/transit-1.png',
+              'images/transit-2.png'
+            ]
           },
           {
             name: 'Healthy Ride Pgh',
             description: 'Animating ride arcs through time.',
             tools: 'PostgreSQL, PostGIS, Leaflet, D3.js',
-            link: 'http://spcotter.github.io/healthy-ride-pgh/'
+            link: 'http://spcotter.github.io/healthy-ride-pgh/',
+            thumbnails: [
+              'images/healthy-ride-1.png'
+            ]
           }
         ]
       }
