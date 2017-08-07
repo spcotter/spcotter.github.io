@@ -62,7 +62,9 @@
 
               <div class="row">
                 <div class="col-sm-12 clearfix" style="margin-top: 20px;">
-                  <img  v-for="t in p.thumbnails" v-bind:src="t" style="float: left; max-width: 100px; border: 1px solid rgba(0,0,0,0.07); margin-left: 15px;">
+                  <a v-for="t in p.thumbnails" v-bind:href="t" target="_blank">
+                    <img  v-bind:src="t" style="float: left; max-width: 100px; border: 1px solid rgba(0,0,0,0.07); margin-left: 15px;">
+                  </a>
                 </div>
               </div>
 
